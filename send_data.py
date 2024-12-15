@@ -12,13 +12,20 @@ except Exception as e:
     print(f"Failed to connect to LoRa module: {e}")
     exit(1)
 
-def send_data(data):
+def send_data(temperature, humidity, pressure, compass_x, compass_y, compass_z):
     """Send data over LoRa."""
     if not lora.is_open:
         print("LoRa serial port is not open.")
         return
 
     try:
+        data = json.dumps({
+            "temperature": temperature,
+            "humidity": humidity,
+            "pressure": pressure,
+            "compass" {"x": compass_x, "y": compass_y, "z": compass_z}
+            })
+        
         lora.write(data.encode('utf-8'))
         print(f"Sent: {data}")
     except Exception as e:

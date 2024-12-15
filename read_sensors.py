@@ -4,6 +4,8 @@ from smbus2 import SMBus
 import board
 import adafruit_bme280
 
+from send_data import send_data
+
 # Initialize the BME280 sensor
 i2c = board.I2C()  # Uses board's I²C pins
 bme280 = adafruit_bme280.Adafruit_BME280_I2C(i2c)
@@ -67,33 +69,41 @@ with open(csv_filename, mode="a", newline="") as file:
         ])
 
 # Function to log data
-def log_data():
+def read_sensors():
+    """Read in data from BME280 and GY273 sensors"""
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+
+    # BME280 readings
+    temperature = bme280.temperature
+    humidity = bme280.humidity
+    pressure = bme280.pressure
+
+    # Compass readings
+    if use_compass:
+        compass_x, compass_y, compass_z = compass.read_compass()
+    else:
+        compass_x, compass_y, compass_z = 0, 0, 0  # Default to zero if compass is unavailable
+
+    print(f"{timestamp}: Temp={temperature:.2f}C, Humidity={humidity:.2f}%, Pressure={pressure:.2f}hPa, "
+          f"Compass(X={compass_x}, Y={compass_y}, Z={compass_z})")
+
+    return temperature, humidity, pressure, compass_x, compass_y, compass_z
+
+def log_data(temperature, humidity, pressure, compass_x, compass_y, compass_z):
+    """Save data to csv file"""
     with open(csv_filename, mode="a", newline="") as file:
         writer = csv.writer(file)
-        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-
-        # BME280 readings
-        temperature = bme280.temperature
-        humidity = bme280.humidity
-        pressure = bme280.pressure
-
-        # Compass readings
-        if use_compass:
-            compass_x, compass_y, compass_z = compass.read_compass()
-        else:
-            compass_x, compass_y, compass_z = 0, 0, 0  # Default to zero if compass is unavailable
-
         # Write data to CSV
         writer.writerow([timestamp, temperature, humidity, pressure, compass_x, compass_y, compass_z])
-        print(f"{timestamp}: Temp={temperature:.2f}C, Humidity={humidity:.2f}%, Pressure={pressure:.2f}hPa, "
-              f"Compass(X={compass_x}, Y={compass_y}, Z={compass_z})")
-
 
 # Main loop
 print("Logging data. Press Ctrl+C to stop.")
 try:
     while True:
-        log_data()
+        temperature, humidity, pressure, compass_x, compass_y, compass_z = read_sensors()
+        log_data(temperature, humidity, pressure, compass_x, compass_y, compass_z)
+        send_data(temperature, humidity, pressure, compass_x, compass_y, compass_z)
+        
         time.sleep(1)  # Adjust the interval as needed
 except KeyboardInterrupt:
     print("Data logging stopped.")
